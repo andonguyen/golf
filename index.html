@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lynwood Caddie">
+<meta name="theme-color" content="#0F2E1F">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Lynwood Caddie Card</title>
+<style>
+  :root {
+    --pine: #0F2E1F;
+    --turf: #2E6B45;
+    --sand: #E4CFA3;
+    --sand-edge: #C9AC72;
+    --water: #7FB3C8;
+    --chalk: #F6F3EA;
+    --card: #FFFFFF;
+    --ink: #1C2420;
+    --ink-soft: #5A665E;
+    --flag: #C43B2E;
+    --gold: #C8922A;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { font-family: var(--sans); background: var(--chalk); color: var(--ink); min-height: 100vh; padding-bottom: env(safe-area-inset-bottom); }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 20; background: var(--pine);
+    padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 2px 10px rgba(15,46,31,.35);
+  }
+  .topbar h1 { color: var(--chalk); font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; white-space: nowrap; }
+  .topbar h1 span { color: var(--gold); }
+  .hole-nav { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .nav-btn { width: 40px; height: 40px; border: none; border-radius: 10px; background: rgba(246,243,234,.12); color: var(--chalk); font-size: 18px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .nav-btn:active { background: rgba(246,243,234,.28); }
+  select#holeSelect {
+    appearance: none; -webkit-appearance: none;
+    border: 1px solid rgba(246,243,234,.3); border-radius: 10px;
+    background: rgba(246,243,234,.1) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%23F6F3EA'/></svg>") no-repeat right 10px center;
+    color: var(--chalk); font-family: var(--mono); font-size: 14px; font-weight: 600;
+    padding: 9px 30px 9px 12px; max-width: 168px;
+  }
+
+  .hole-head { padding: 18px 18px 6px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .hole-num { font-size: 44px; font-weight: 800; line-height: 1; color: var(--pine); letter-spacing: -.02em; }
+  .hole-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { font-family: var(--mono); font-size: 12px; font-weight: 700; padding: 4px 9px; border-radius: 6px; background: var(--pine); color: var(--chalk); }
+  .chip.si { background: transparent; color: var(--pine); border: 1.5px solid var(--pine); }
+  .chip.danger { background: var(--flag); }
+  .hole-title { padding: 0 18px 4px; font-size: 14px; color: var(--ink-soft); font-weight: 500; }
+
+  .diagram-wrap { margin: 10px 14px 0; background: var(--card); border-radius: 16px; box-shadow: 0 1px 4px rgba(28,36,32,.08); overflow: hidden; }
+  .diagram-wrap img.hole-img { display: block; width: 100%; height: auto; background: #EFEBDD; min-height: 180px; object-fit: contain; }
+  .img-caption { font-size: 10.5px; color: var(--ink-soft); font-family: var(--mono); padding: 8px 14px 10px; border-top: 1px solid #EEE9DC; }
+  .offline-note { display:none; font-size: 12px; color: var(--flag); padding: 8px 14px 0; font-weight: 600; }
+  .diagram-wrap .schematic { display: none; }
+  .diagram-wrap.img-failed img.hole-img { display: none; }
+  .diagram-wrap.img-failed .schematic { display: block; }
+  .diagram-wrap.img-failed .offline-note { display: block; }
+  .schematic svg { display: block; width: 100%; height: auto; }
+
+  .section { margin: 14px 14px 0; }
+  .section-label { font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--pine); margin-bottom: 8px; padding-left: 4px; }
+  .desc-card { background: var(--card); border-radius: 16px; box-shadow: 0 1px 4px rgba(28,36,32,.08); padding: 14px; font-size: 14.5px; line-height: 1.5; }
+  .desc-card strong { color: var(--pine); }
+
+  .hazard-list { background: var(--card); border-radius: 16px; box-shadow: 0 1px 4px rgba(28,36,32,.08); overflow: hidden; }
+  .hazard { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-bottom: 1px solid #EEE9DC; }
+  .hazard:last-child { border-bottom: none; }
+  .hz-tag { font-family: var(--mono); font-size: 10.5px; font-weight: 800; letter-spacing: .06em; padding: 4px 7px; border-radius: 6px; flex-shrink: 0; min-width: 58px; text-align: center; }
+  .hz-WATER { background: var(--water); color: #10323F; }
+  .hz-SAND  { background: var(--sand); color: #5C4715; }
+  .hz-WASTE { background: var(--sand); color: #5C4715; border: 1.5px dashed var(--sand-edge); }
+  .hz-OOB   { background: #D9D4C7; color: #4A453B; }
+  .hz-ROUGH { background: #2C5638; color: #DCE8D4; }
+  .hz-TREE  { background: #356B44; color: #E9F2E7; }
+  .hazard p { font-size: 13.5px; line-height: 1.35; flex: 1; }
+  .hz-dist { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--flag); flex-shrink: 0; text-align: right; }
+
+  .shot-list { background: var(--card); border-radius: 16px; box-shadow: 0 1px 4px rgba(28,36,32,.08); overflow: hidden; }
+  .shot { display: flex; gap: 12px; padding: 13px 14px; border-bottom: 1px solid #EEE9DC; align-items: flex-start; }
+  .shot:last-child { border-bottom: none; }
+  .club-tag { font-family: var(--mono); font-size: 13px; font-weight: 800; background: var(--turf); color: #fff; border-radius: 8px; padding: 6px 9px; min-width: 52px; text-align: center; flex-shrink: 0; }
+  .shot p { font-size: 14.5px; line-height: 1.45; }
+  .shot p strong { color: var(--pine); }
+
+  .danger-card { background: #FBEDEA; border-left: 4px solid var(--flag); border-radius: 12px; padding: 12px 14px; font-size: 13.5px; line-height: 1.45; color: #7A2A21; }
+  .target-card { background: var(--pine); color: var(--chalk); border-radius: 12px; padding: 12px 14px; font-size: 13.5px; display: flex; justify-content: space-between; align-items: center; }
+  .target-card b { font-family: var(--mono); font-size: 18px; color: var(--gold); }
+
+  .notes-card { background: var(--card); border-radius: 16px; box-shadow: 0 1px 4px rgba(28,36,32,.08); padding: 14px; }
+  textarea#noteBox { width: 100%; min-height: 96px; resize: vertical; border: 1.5px solid #E2DCC9; border-radius: 10px; padding: 11px 12px; font-family: var(--sans); font-size: 15px; line-height: 1.45; color: var(--ink); background: #FCFBF7; }
+  textarea#noteBox:focus { outline: none; border-color: var(--turf); }
+  .note-status { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 11.5px; color: var(--ink-soft); font-family: var(--mono); }
+  .note-status .saved { color: var(--turf); font-weight: 700; opacity: 0; transition: opacity .25s; }
+  .note-status .saved.show { opacity: 1; }
+  .storage-warn { margin-top: 8px; font-size: 12px; color: var(--flag); display: none; }
+  .footer { text-align: center; padding: 22px 0 30px; font-size: 10.5px; color: var(--ink-soft); font-family: var(--mono); letter-spacing: .08em; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>Lynwood <span>Caddie</span></h1>
+  <div class="hole-nav">
+    <button class="nav-btn" id="prevBtn" aria-label="Previous hole">&#8249;</button>
+    <select id="holeSelect" aria-label="Select hole"></select>
+    <button class="nav-btn" id="nextBtn" aria-label="Next hole">&#8250;</button>
+  </div>
+</header>
+
+<main id="app">
+  <div class="hole-head">
+    <div class="hole-num" id="holeNum">1</div>
+    <div class="hole-meta" id="holeMeta"></div>
+  </div>
+  <div class="hole-title" id="holeTitle"></div>
+
+  <div class="diagram-wrap" id="diagramWrap">
+    <div class="offline-note">Club image unavailable (offline?) &mdash; showing schematic instead.</div>
+    <img class="hole-img" id="holeImg" alt="Official Lynwood hole diagram" loading="eager">
+    <div class="schematic" id="svgHost"></div>
+    <div class="img-caption" id="imgCaption">Official hole diagram &copy; Lynwood Golf &amp; Country Club (loaded from lynwood.com.au)</div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">The hole</div>
+    <div class="desc-card" id="descCard"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Traps &amp; hazards <span style="font-weight:500; letter-spacing:0; text-transform:none; color:var(--ink-soft)">&mdash; distances from white tee, ~ = estimate</span></div>
+    <div class="hazard-list" id="hazardList"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">The play</div>
+    <div class="shot-list" id="shotList"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Watch for</div>
+    <div class="danger-card" id="dangerCard"></div>
+  </div>
+
+  <div class="section">
+    <div class="target-card"><span>Walk-away score</span><b id="targetScore">5</b></div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">My notes &mdash; hole <span id="noteHoleNum">1</span></div>
+    <div class="notes-card">
+      <textarea id="noteBox" placeholder="Wind, pin position, what worked, what to try next time&hellip;"></textarea>
+      <div class="note-status">
+        <span id="noteCount">0 characters</span>
+        <span class="saved" id="savedFlag">&#10003; Saved</span>
+      </div>
+      <div class="storage-warn" id="storageWarn">Notes can't be saved in this preview. Open the file in Safari and saving will work.</div>
+    </div>
+  </div>
+
+  <div class="footer">LYNWOOD G&amp;CC &middot; PITT TOWN &middot; WHITE TEES &middot; PAR 72</div>
+</main>
+
+<script>
+/* =========================================================
+   HOLE DATA
+   Official images: lynwood.com.au course guide (hotlinked, not modified).
+   Distances: white-tee metres (estimates except H18 459m, H7 bunker 235m).
+   Bag: Dr 220 / 4W 185 / 4H 175 / 4i 162 / 5i 155 / 6i 146
+        7i 138 / 8i 128 / 9i 110 / PW 100
+   ========================================================= */
+const IMG_BASE = "https://cdn.moble.com/w/3034/";
+const HOLES = [
+{ n:1, par:5, dist:"~510m", si:7, img:"2175953/file/LYN%20Golf%20Course%20Holes.png",
+  title:"Welcoming opener — wide fairway, cross bunkers short of green",
+  desc:"A fair-start par 5 down a wide fairway. The strategic decision is the second shot: cross bunkers sit short of the green, and where you place the layup should follow the pin — near the right fairway bunker for a front-right flag, toward the wetland side for a left or long flag.",
+  hazards:[
+    ["SAND","Right fairway bunker (position marker for layup)","~330m"],
+    ["SAND","Cross bunkers short of the green","~440m"],
+    ["WATER","Wetland left of the green","~470m+"],
+    ["ROUGH","Native rough both sides — ball-swallowing all day","0–510m"]
+  ],
+  shots:[
+    ["DR","Anywhere on the wide fairway. Aim <strong>left edge</strong>, let the fade drift to centre. Full routine — this swing sets your tempo."],
+    ["4W","Second <strong>must finish short of the cross bunkers</strong> (~440m mark). Front-right pin: favour the right-bunker side. Left/long pin: favour the wetland side."],
+    ["PW","~105m third to the <strong>centre of the green</strong>. Ignore the pin, two putts."]
+  ],
+  danger:"Cross bunkers catch a greedy 4W. Wetland lurks left of the green.",
+  target:"5",
+  svg:{ shape:"straight", features:[
+    {t:"bunker",x:118,y:120,rx:16,ry:7},{t:"bunker",x:172,y:112,rx:16,ry:7},
+    {t:"bunker",x:196,y:250,rx:13,ry:8},
+    {t:"water",d:"M70,60 q30,20 28,55 q-30,-5 -42,-28 q0,-20 14,-27 Z"},
+    {t:"zone",x:150,y:300},{t:"zone",x:152,y:170},
+    {t:"aim",d:"M150,395 L138,300 L150,172 L150,92",label:"DR - 4W - PW"} ]}
+},
+{ n:2, par:4, dist:"~325m", si:8, img:"2175954/file/LYN%20Golf%20Course%20Holes2.png",
+  title:"Dogleg LEFT — wetland hugs the inside corner",
+  desc:"A short, strategic par 4 that asks a club-selection question on the tee. The dogleg turns left with wetland tight on the inside, punishing both the pulled tee ball and the long one that runs through the fairway. The club itself recommends a hybrid or long iron to the widest part; a lone bunker guards left pins at the green.",
+  hazards:[
+    ["WATER","Wetland inside (left of) the dogleg","~180–250m"],
+    ["ROUGH","Run-through rough beyond the turn","~230m+"],
+    ["SAND","Lone greenside bunker guarding left pins","at green"]
+  ],
+  shots:[
+    ["4W","Driver stays in the bag — 220m runs through the turn. 4W (185m) to the <strong>widest part</strong>, aimed right-centre."],
+    ["7i","~140m to <strong>centre of green</strong>. Never chase a left flag behind the bunker."]
+  ],
+  danger:"Wetland on the inside of the dogleg catches the pull AND the run-through.",
+  target:"4–5",
+  svg:{ shape:"dogleg-left", features:[
+    {t:"water",d:"M60,150 q45,-15 80,15 q-15,45 -60,45 q-30,-25 -20,-60 Z"},
+    {t:"bunker",x:112,y:88,rx:14,ry:8},
+    {t:"zone",x:185,y:235},
+    {t:"aim",d:"M170,395 L185,238 L120,95",label:"4W - 7i"} ]}
+},
+{ n:3, par:3, dist:"~125m", si:18, img:"2175955/file/LYN%20Golf%20Course%20Holes3.png",
+  title:"Uphill, elevated green — flag base hidden, crowned centre",
+  desc:"A classic short par 3 needing an aerial shot to an elevated green whose flag base you can't see, which makes club selection the whole test. Three large bunkers cover left, front and right, steep grass banks take the rest, and the putting surface is highest in its centre so balls shed toward the edges.",
+  hazards:[
+    ["SAND","Bunker left of green","~120m"],
+    ["SAND","Bunker front of green","~115m"],
+    ["SAND","Bunker right of green","~120m"],
+    ["ROUGH","Steep grass banks on remaining edges","at green"]
+  ],
+  shots:[
+    ["8i","Smooth 8i, <strong>never the 9i</strong> — uphill plays 130m+. Dead centre; a fringe finish is fine on the crowned surface."]
+  ],
+  danger:"Short is the worst miss. Take the club that covers.",
+  target:"3 — bank this par",
+  svg:{ shape:"par3", features:[
+    {t:"bunker",x:98,y:118,rx:15,ry:9},{t:"bunker",x:150,y:158,rx:17,ry:8},{t:"bunker",x:202,y:118,rx:15,ry:9},
+    {t:"aim",d:"M150,395 L150,105",label:"8i"} ]}
+},
+{ n:4, par:4, dist:"~300m", si:15, img:"2175956/file/LYN%20Golf%20Course%20Holes4.png",
+  title:"Shortest par 4 — dogleg RIGHT, pond guards the direct line",
+  desc:"The shortest par 4 on the course tempts big hitters at the green, but the direct line ends at a small, partly hidden target framed by trees with a pond short of it. The percentage route is the right side of the fairway to the corner, leaving a short iron over a central front bunker into the deeper back half of the shallow plateau green.",
+  hazards:[
+    ["WATER","Pond short of the green on the direct line","~255–285m"],
+    ["SAND","Central bunker fronting the green","~290m"],
+    ["SAND","Front-left bunker (bail-out side)","at green"],
+    ["TREE","Trees shaping the dogleg right","~180–240m"]
+  ],
+  shots:[
+    ["4W","To the <strong>right side of the fairway at the corner</strong> — your fade drifts to the correct spot."],
+    ["9i","Or smooth 8i, <strong>carrying the central front bunker</strong> to the deeper back section."]
+  ],
+  danger:"The pond kills the hero line; the front-left bunker catches the wide bail-out.",
+  target:"4 — real chance",
+  svg:{ shape:"dogleg-right", features:[
+    {t:"water",d:"M175,105 q35,-8 50,20 q-8,32 -42,28 q-25,-18 -8,-48 Z"},
+    {t:"bunker",x:150,y:118,rx:12,ry:7},{t:"bunker",x:118,y:100,rx:12,ry:7},
+    {t:"zone",x:118,y:240},
+    {t:"aim",d:"M130,395 L118,242 L128,95",label:"4W - 9i"} ]}
+},
+{ n:5, par:4, dist:"~380m", si:1, img:"2175957/file/LYN%20Golf%20Course%20Holes5.png",
+  title:"Hardest hole — sandy waste in the drive zone. Personal par 5.",
+  desc:"The longest par 4 on the front nine, easing only with a helping south-westerly. An expansive sandy waste guards the driving zone as the fairway bends left — the club's ideal shot is a draw, which isn't in your bag, so position beats power. The green is generous, accepts run-ups, and its one defender is a small pot bunker front-right.",
+  hazards:[
+    ["WASTE","Expansive sandy waste in the drive zone (right/centre)","~200–260m"],
+    ["SAND","Small pot bunker front-RIGHT of green","~370m"],
+    ["ROUGH","Native rough left as the fairway bends","~200m+"]
+  ],
+  shots:[
+    ["DR","Aim the <strong>left edge of the waste-free line</strong>; fade finishes centre."],
+    ["8i","Layup to ~30m short — the green accepts run-ups, no need to fly it."],
+    ["CHIP","Run it on. Pot bunker is front-RIGHT: <strong>your pull is safe, the push finds sand</strong>. Two putts, take 5."]
+  ],
+  danger:"Refusing the layup is how 5 becomes 7 on SI 1.",
+  target:"5 = personal par",
+  svg:{ shape:"curve-left", features:[
+    {t:"waste",d:"M190,220 q45,-10 55,40 q-10,55 -55,50 q-25,-45 0,-90 Z"},
+    {t:"bunker",x:176,y:112,rx:9,ry:6},
+    {t:"zone",x:132,y:250},{t:"zone",x:135,y:150},
+    {t:"aim",d:"M150,395 L128,252 L136,152 L146,100",label:"DR - 8i - chip"} ]}
+},
+{ n:6, par:4, dist:"~315m", si:16, img:"2175958/file/LYN%20Golf%20Course%20Holes6.png",
+  title:"Risk-reward dogleg left — two corner bunkers stacked",
+  desc:"A textbook risk-reward dogleg left: a large bunker sits on the inside corner with a second beyond it to catch the long hitter who clears the first. Laying up short buys safety at the cost of a longer second into a modest green whose back half is guarded by a large trap.",
+  hazards:[
+    ["SAND","Inside-corner bunker (dogleg left)","~200m"],
+    ["SAND","Second bunker beyond the corner","~230m"],
+    ["SAND","Large bunker guarding the BACK of the green","~310m"],
+    ["ROUGH","Corner rough for the timid bail right","~190m+"]
+  ],
+  shots:[
+    ["4W","Lay up <strong>short of the inside-corner bunker</strong>. Carrying it isn't your shape, and a second trap waits beyond anyway."],
+    ["6i","<strong>Favour front-centre</strong> — short is fine, long finds the back bunker and is dead."]
+  ],
+  danger:"Long is the only fatal miss at this green.",
+  target:"4–5",
+  svg:{ shape:"dogleg-left", features:[
+    {t:"bunker",x:100,y:238,rx:16,ry:9},{t:"bunker",x:88,y:196,rx:13,ry:8},
+    {t:"bunker",x:118,y:72,rx:16,ry:7},
+    {t:"zone",x:178,y:262},
+    {t:"aim",d:"M168,395 L178,264 L120,100",label:"4W - 6i"} ]}
+},
+{ n:7, par:4, dist:"~365m", si:5, img:"2175959/file/LYN%20Golf%20Course%20Holes7.png",
+  title:"Deep central bunker at 235m — your 220m driver fits perfectly",
+  desc:"The tee shot decides this hole. A deep bunker sits mid-fairway at about 235 metres with ample room to its right (the club and Golf NSW both say right is the play), while Golf Digest rates the hidden water off this tee as the sneakiest on the course. Thread the tee ball and the green is open and receptive to low running approaches — ideal in wind.",
+  hazards:[
+    ["SAND","Deep CENTRAL fairway bunker (verified distance)","235m"],
+    ["WATER","Hidden water left of the driving zone","~180–240m"],
+    ["SAND","Right-side bunker near the green (in play from the safe right line)","~340m"],
+    ["ROUGH","Left rough over the hidden water","~180m+"]
+  ],
+  shots:[
+    ["DR","At the <strong>right side of the central trap</strong> — 220m finishes just short, fade works into the room right. Stay off the left."],
+    ["6i","<strong>Flight it down and let it release</strong> — the green takes runners. Most wind-proof approach on the course."]
+  ],
+  danger:"The 235m bunker only matters if you flush one downwind — then it's 3W.",
+  target:"4–5",
+  svg:{ shape:"straight", features:[
+    {t:"bunker",x:148,y:200,rx:15,ry:9},
+    {t:"water",d:"M62,180 q35,-12 48,20 q-12,35 -48,28 q-18,-25 0,-48 Z"},
+    {t:"bunker",x:192,y:112,rx:12,ry:7},
+    {t:"zone",x:182,y:215},
+    {t:"aim",d:"M160,395 L182,218 L158,95",label:"DR - 6i"} ]}
+},
+{ n:8, par:4, dist:"~380m", si:3, img:"2175960/file/LYN%20Golf%20Course%20Holes8.png",
+  title:"Uphill dogleg left — OOB left, POND RIGHT. Slice danger.",
+  desc:"A spectacular uphill dogleg left played from elevated tees. Out of bounds runs down the left with three fairway bunkers on that side, a pond squeezes the right of the landing zone, and the uphill approach targets a long, narrow green sloping back-to-front with a bunker left and water right. The club's own line: centre or slightly left of centre.",
+  hazards:[
+    ["OOB","Out-of-bounds fence, entire left side","0–380m"],
+    ["SAND","Three fairway bunkers, left side","~180–240m"],
+    ["WATER","Pond squeezing the RIGHT of the landing zone","~200–250m"],
+    ["SAND","Greenside bunker left","at green"],
+    ["WATER","Water right of the green","at green"]
+  ],
+  shots:[
+    ["4H","The one tee where your slice is wet. 175m at <strong>centre-left</strong> — tighter dispersion keeps both flanks out of reach."],
+    ["5i","Up the hill, short of the long narrow green."],
+    ["PITCH","On, below the hole (back-to-front slope). <strong>Never attack.</strong> Two putts, take 5."]
+  ],
+  danger:"Pond right = your driver slice window. This hole is why the 4H is in the bag.",
+  target:"5 = personal par",
+  svg:{ shape:"dogleg-left", features:[
+    {t:"oob",x1:52,y1:60,x2:70,y2:290},
+    {t:"bunker",x:92,y:230,rx:12,ry:7},{t:"bunker",x:84,y:196,rx:12,ry:7},{t:"bunker",x:92,y:162,rx:12,ry:7},
+    {t:"water",d:"M205,215 q40,-10 48,28 q-10,38 -48,30 q-20,-28 0,-58 Z"},
+    {t:"bunker",x:98,y:86,rx:12,ry:7},
+    {t:"water",d:"M170,60 q28,-4 34,18 q-8,22 -32,18 q-14,-16 -2,-36 Z"},
+    {t:"zone",x:148,y:245},
+    {t:"aim",d:"M160,395 L146,247 L124,168 L122,95",label:"4H - 5i - pitch"} ]}
+},
+{ n:9, par:3, dist:"~145m", si:12, img:"2175961/file/LYN%20Golf%20Course%20Holes9.png",
+  title:"Elevated tee — pond and bunker RIGHT of the green",
+  desc:"A pretty but demanding par 3 from one of the highest points on the property. A pond waits right of the green and claims anything that drifts and rolls that way; a bunker on the same side offers the drier bad option. Centre of the green is the play for any pin.",
+  hazards:[
+    ["WATER","Pond right of the green — drift rolls in","~130–150m"],
+    ["SAND","Bunker right, shielding the pond","~135m"],
+    ["ROUGH","Banked rough left (safe side)","~130m+"]
+  ],
+  shots:[
+    ["6i","<strong>Left-centre of the green</strong>, let drift bring it back. Downhill helps the 6i cover. Right rolls wet."]
+  ],
+  danger:"The slice side again — commit to the left-centre line.",
+  target:"3–4, then the turn",
+  svg:{ shape:"par3", features:[
+    {t:"water",d:"M195,95 q42,-6 50,32 q-12,40 -50,32 q-22,-30 0,-64 Z"},
+    {t:"bunker",x:188,y:132,rx:12,ry:8},
+    {t:"aim",d:"M150,395 L138,105",label:"6i"} ]}
+},
+{ n:10, par:4, dist:"~330m", si:4, img:"2175962/file/LYN%20Golf%20Course%20Holes10.png",
+  title:"Bunkers right, left & long — water carry into a small green",
+  desc:"From elevated tees the fairway is framed by bunkers right, left and further out through the dogleg — the club's line is between the right and long traps. The small green sits beyond water that must be carried on the second, with a pot bunker on its front-left corner punishing the aggressive left route, and (per Golf Digest) a pond right of the putting surface.",
+  hazards:[
+    ["SAND","Right fairway bunker","~200m"],
+    ["SAND","Left fairway bunker","~215m"],
+    ["SAND","Long bunker through the dogleg","~250m"],
+    ["WATER","Water crossing in FRONT of the green (must carry)","~300m"],
+    ["WATER","Pond RIGHT of the green","at green"],
+    ["SAND","Pot bunker front-left of green","at green"]
+  ],
+  shots:[
+    ["4W","<strong>Between the right and long bunkers</strong> — 185m threads the gap; driver reaches the long trap."],
+    ["9i","Full commitment over the water. <strong>Aim CENTRE-LEFT</strong> — the only green all day where the pull is your friend."]
+  ],
+  danger:"Right of this green is wet. Do NOT aim right-half here.",
+  target:"4–5",
+  svg:{ shape:"straight", features:[
+    {t:"bunker",x:198,y:242,rx:14,ry:8},{t:"bunker",x:100,y:222,rx:13,ry:8},{t:"bunker",x:172,y:170,rx:13,ry:7},
+    {t:"water",d:"M105,128 L200,128 Q210,142 200,152 L105,152 Q95,140 105,128 Z"},
+    {t:"water",d:"M198,78 q36,-4 42,26 q-10,30 -42,24 q-18,-22 0,-50 Z"},
+    {t:"bunker",x:112,y:104,rx:11,ry:7},
+    {t:"zone",x:148,y:210},
+    {t:"aim",d:"M150,395 L148,212 L136,95",label:"4W - 9i"} ]}
+},
+{ n:11, par:4, dist:"~310m", si:9, img:"2175963/file/LYN%20Golf%20Course%20Holes11.png",
+  title:"Dogleg right — creek crosses in front of a small green",
+  desc:"A boldness-versus-precision hole: the closer the tee shot flirts with the big bunker on the fairway's right, the easier the approach. The small green is defended by a creek crossing directly in front and a large bunker concealing its back-left, so club selection on the second matters more than the line.",
+  hazards:[
+    ["SAND","Large right-side fairway bunker (the flirt line)","~195–220m"],
+    ["WATER","Creek crossing in FRONT of the green","~290m"],
+    ["SAND","Large bunker hiding the BACK-LEFT of the green","at green"],
+    ["ROUGH","Wide-side rough left for the over-cautious","~190m+"]
+  ],
+  shots:[
+    ["4W","<strong>Left of the fairway bunker</strong> — fade edges toward the ideal line, 185m stays short of trouble."],
+    ["8i","Full smooth 8i, <strong>not the 9i</strong> — the creek punishes thin. Middle of green; back-left is a sucker pin."]
+  ],
+  danger:"The creek in front + hidden back-left bunker make pin-chasing expensive.",
+  target:"4 — genuine par chance",
+  svg:{ shape:"dogleg-right", features:[
+    {t:"bunker",x:200,y:225,rx:18,ry:10},
+    {t:"water",d:"M100,132 L205,120 Q215,132 205,142 L100,154 Q92,142 100,132 Z"},
+    {t:"bunker",x:132,y:78,rx:14,ry:7},
+    {t:"zone",x:150,y:245},
+    {t:"aim",d:"M135,395 L150,248 L158,95",label:"4W - 8i"} ]}
+},
+{ n:12, par:5, dist:"~475m", si:11, img:"2175964/file/LYN%20Golf%20Course%20Holes12.png",
+  title:"Wetlands the FULL left side — diagonal creek crossing",
+  desc:"A beautiful, demanding par 5: wetlands run the entire left length while a chain of bunkers lines the right, and the fairway tightens the further you drive. A narrow creek crosses diagonally well short of the green — carry it with the second and the pitch in is clean; stay short and three bunkers block the route to the surface.",
+  hazards:[
+    ["WATER","Wetlands — ENTIRE left side, tee to green","0–475m"],
+    ["SAND","Bunker chain down the right","~180–260m"],
+    ["WATER","Diagonal creek crossing, well short of green","~300–330m"],
+    ["SAND","Three bunkers between creek and green","~360–420m"],
+    ["ROUGH","Narrowing rough as the drive stretches","~230m+"]
+  ],
+  shots:[
+    ["DR","Right-centre — 220m sits in the friendly width before the fairway tightens."],
+    ["5i","<strong>Carry the diagonal creek.</strong> ALIGNMENT CHECK: wetlands-left vs your pull-left is the worst matchup on the course."],
+    ["PW","~100m clean pitch. From tee-shot rough: lay up short of the creek, take the bunker route with a full wedge."]
+  ],
+  danger:"The pulled 5i second is the card-wrecker. One deliberate alignment routine.",
+  target:"5–6",
+  svg:{ shape:"straight", features:[
+    {t:"water",d:"M48,60 L82,60 L92,380 L48,380 Z"},
+    {t:"bunker",x:210,y:250,rx:12,ry:7},{t:"bunker",x:216,y:200,rx:12,ry:7},{t:"bunker",x:210,y:150,rx:12,ry:7},
+    {t:"water",d:"M95,175 L215,140 Q224,150 216,158 L100,192 Q90,184 95,175 Z"},
+    {t:"bunker",x:130,y:112,rx:11,ry:7},{t:"bunker",x:186,y:104,rx:11,ry:7},{t:"bunker",x:158,y:120,rx:10,ry:6},
+    {t:"zone",x:168,y:255},{t:"zone",x:158,y:135},
+    {t:"aim",d:"M160,395 L168,257 L152,138 L148,92",label:"DR - 5i - PW"} ]}
+},
+{ n:13, par:4, dist:"~355m", si:2, img:"2175965/file/LYN%20Golf%20Course%20Holes13.png",
+  title:"Sharp dogleg right around a beach bunker + wetland. Personal par 5.",
+  desc:"A sharp dogleg right wrapping a striking beach-style bunker on the corner of a wetland running down the right. Carrying the corner is the hero play; going wide leaves a longer approach that must clear a cross-slope bunker well short of a small, elevated, mostly hidden green. The club calls par a worthy achievement here — for you it's a bonus.",
+  hazards:[
+    ["SAND","Beach-style bunker on the corner (right)","~210–240m"],
+    ["WATER","Wetland along the entire right of the dogleg","~180m+"],
+    ["SAND","Cross-slope bunker well short of the green","~290m"],
+    ["ROUGH","Elevated green surrounds — small, hidden target","at green"]
+  ],
+  shots:[
+    ["DR","<strong>Firmly at the left half</strong> — the corner trouble sits exactly in your slice window. Fade finishes centre."],
+    ["8i","Lay up <strong>short of the cross-slope bunker</strong>. The hidden elevated green is not a long-approach target."],
+    ["WEDGE","Pitch on, two putts, write 5, feel good. SI 2 as a three-shotter."]
+  ],
+  danger:"Right-side wetland + beach bunker vs your slice off the tee.",
+  target:"5 = personal par",
+  svg:{ shape:"dogleg-right", features:[
+    {t:"water",d:"M185,155 q55,-12 62,45 q-15,50 -62,42 q-28,-40 0,-87 Z"},
+    {t:"bunker",x:180,y:210,rx:20,ry:11},
+    {t:"bunker",x:118,y:132,rx:14,ry:7},
+    {t:"zone",x:120,y:240},{t:"zone",x:128,y:158},
+    {t:"aim",d:"M140,395 L118,242 L128,160 L142,95",label:"DR - 8i - wedge"} ]}
+},
+{ n:14, par:3, dist:"~150m", si:14, img:"2175966/file/LYN%20Golf%20Course%20Holes14.png",
+  title:"The postcard — green 3m below across a valley, backstop behind",
+  desc:"The postcard hole: from the elevated tee the green sits three metres below across a valley, fully visible with its three bunkers. It offers three pin zones — the front pin is the friendly one, and for back pins the slope behind the green feeds over-clubbed balls back onto the surface, making long the sanctioned miss.",
+  hazards:[
+    ["SAND","Bunker left of green","~140m"],
+    ["SAND","Bunker front of green","~135m"],
+    ["SAND","Bunker right of green","~140m"],
+    ["ROUGH","Valley short of the green","~100–130m"]
+  ],
+  shots:[
+    ["7i","Hard 7i or smooth 6i — the 3m drop takes off about half a club. Back pin: <strong>over-club freely, the backstop returns it</strong>. Only hole where long is safe."]
+  ],
+  danger:"Short into the valley or right into sand are the costly misses.",
+  target:"3–4",
+  svg:{ shape:"par3", features:[
+    {t:"bunker",x:104,y:112,rx:13,ry:8},{t:"bunker",x:150,y:152,rx:15,ry:8},{t:"bunker",x:196,y:112,rx:13,ry:8},
+    {t:"ridge",d:"M105,62 Q150,50 195,62"},
+    {t:"aim",d:"M150,395 L150,100",label:"7i (hard)"} ]}
+},
+{ n:15, par:4, dist:"~340m", si:17, img:"2175967/file/LYN%20Golf%20Course%20Holes15.png",
+  title:"Elevated tee, two routes — take the boring right one",
+  desc:"A choose-your-route hole from an elevated tee. The left line clears a fairway bunker for a short approach but must then hold the green past two greenside bunkers; the right line finishes short of the wetland beyond the dogleg and leaves an approach three to four clubs longer — but completely unobstructed.",
+  hazards:[
+    ["SAND","Left fairway bunker (the shortcut carry)","~200–220m"],
+    ["WATER","Wetland beyond the dogleg, right side","~230m+"],
+    ["SAND","Two greenside bunkers on the left route","at green"],
+    ["ROUGH","Elevated-tee crosswind exposure — pick club late","tee"]
+  ],
+  shots:[
+    ["4W","<strong>Right side, short of the wetland</strong> — your 220m driver can reach it, the 185m 4W can't."],
+    ["5i","Or 6i. Longer but <strong>unobstructed</strong> — the greenside bunkers never come into play. Centre of green."]
+  ],
+  danger:"The long straight ball into the wetland is the only way to ruin SI 17.",
+  target:"4–5 — boring golf, gross par",
+  svg:{ shape:"dogleg-right", features:[
+    {t:"bunker",x:104,y:218,rx:16,ry:9},
+    {t:"water",d:"M188,148 q45,-10 52,30 q-12,40 -52,32 q-24,-28 0,-62 Z"},
+    {t:"bunker",x:112,y:96,rx:12,ry:7},{t:"bunker",x:104,y:122,rx:11,ry:6},
+    {t:"zone",x:162,y:235},
+    {t:"aim",d:"M150,395 L162,237 L136,95",label:"4W - 5i"} ]}
+},
+{ n:16, par:5, dist:"~500m", si:13, img:"2175968/file/LYN%20Golf%20Course%20Holes16.png",
+  title:"Bunkers both sides — LAY UP short of the pond",
+  desc:"A strong par 5 where bunkers must be negotiated on both flanks all the way to a large elevated green. The defining decision is the second shot: the club's own guidance is to lay up short of the small pond with its beach-style bunker on the right, leaving a precise wedge over sand, humps and hollows to the centre of the surface. It parallels the 12th, so there's leeway for a loose drive.",
+  hazards:[
+    ["SAND","Flanking bunkers both sides of the drive zone","~180–260m"],
+    ["WATER","Small pond in the SECOND-shot zone","~300–330m"],
+    ["SAND","Beach-style bunker right of the pond","~310m"],
+    ["SAND","Greenside trap left + humps and hollows","at green"],
+    ["ROUGH","Elevated green — every miss leaves an ugly pitch","at green"]
+  ],
+  shots:[
+    ["DR","Centre-left. A wild one has room — it parallels the 12th."],
+    ["5i","<strong>Short of the pond and beach bunker</strong> — the 4W flirts with finding it. Pick a specific patch of fairway."],
+    ["PW","Full PW / hard 9i from ~95–100m over the sand. <strong>Centre only</strong> — left, right and long all punish."]
+  ],
+  danger:"The mid-fairway pond in the layup zone is the card-trap. 5i, not 4W.",
+  target:"5–6",
+  svg:{ shape:"straight", features:[
+    {t:"bunker",x:96,y:280,rx:12,ry:7},{t:"bunker",x:204,y:262,rx:12,ry:7},
+    {t:"bunker",x:98,y:220,rx:11,ry:7},{t:"bunker",x:206,y:198,rx:11,ry:7},
+    {t:"water",d:"M162,145 q38,-8 46,24 q-10,32 -46,26 q-20,-22 0,-50 Z"},
+    {t:"bunker",x:212,y:158,rx:14,ry:8},
+    {t:"bunker",x:112,y:92,rx:12,ry:7},
+    {t:"zone",x:140,y:245},{t:"zone",x:126,y:158},
+    {t:"aim",d:"M150,395 L140,247 L126,160 L142,92",label:"DR - 5i - PW"} ]}
+},
+{ n:17, par:3, dist:"~165m", si:6, img:"2175969/file/LYN%20Golf%20Course%20Holes17.png",
+  title:"Diagonal green behind a ridge — depth perception lies",
+  desc:"A deceptive par 3 whose generous green runs diagonally front-left to back-right just beyond a ridge that scrambles depth perception. Two large bunkers are cut into that ridge; a shot through the gap between them finds the front edge and a reasonable putt to any flag, while centre and back pins bring the right-hand trap fully into play.",
+  hazards:[
+    ["SAND","Left ridge bunker","~150m"],
+    ["SAND","Right ridge bunker — alive for centre/back pins","~155m"],
+    ["ROUGH","Ridge hides the surface — trust the number, not your eyes","~150m"]
+  ],
+  shots:[
+    ["4i","Or 4H flighted. <strong>Front-left entry between the traps</strong> — the fat side of the diagonal AND your pull-safe line. Ignore centre/back pins."]
+  ],
+  danger:"Everything looks closer than it is. Chip-and-putt 3 is a win.",
+  target:"3–4",
+  svg:{ shape:"par3-diag", features:[
+    {t:"ridge",d:"M90,150 Q150,132 210,150"},
+    {t:"bunker",x:118,y:142,rx:15,ry:8},{t:"bunker",x:186,y:138,rx:15,ry:8},
+    {t:"aim",d:"M150,395 L130,118",label:"4i / 4H"} ]}
+},
+{ n:18, par:5, dist:"459m", si:10, img:"2175970/file/LYN%20Golf%20Course%20Holes18.png",
+  title:"Signature closer — hazards both sides, the famous gum tree left",
+  desc:"Lynwood's signature finisher, a relatively short par 5 (459m from the whites — the one verified white-tee distance). Hazards line both sides of the fairway and a large gum tree on the left blocks the approach of any drive that drifts that way. The raised home green is guarded by a deep bunker front-right and slopes back-to-front, all in view of the clubhouse veranda.",
+  hazards:[
+    ["WATER","Hazards lining BOTH sides of the fairway","~180–260m"],
+    ["TREE","Large gum tree, left — blocks a drifted drive's approach","~230–260m"],
+    ["SAND","Deep bunker front-RIGHT of the raised green","~450m"],
+    ["ROUGH","Back-to-front green — above the hole is slippery","at green"]
+  ],
+  shots:[
+    ["DR","<strong>Right-centre</strong> — the fade keeps you clear of the gum."],
+    ["6i","146m leaves ~93m — a full wedge number, never an awkward half-swing."],
+    ["PW","Full swing flies the deep front-right bunker; the tentative half-wedge doesn't. <strong>Below the hole.</strong> Finish for the veranda."]
+  ],
+  danger:"The gum tree off the tee and the front-right bunker at the green — both punish tentativeness, not aggression.",
+  target:"5–6 — par here is the round's trophy",
+  svg:{ shape:"straight", features:[
+    {t:"water",d:"M52,220 q30,-8 38,20 q-8,28 -38,22 q-16,-20 0,-42 Z"},
+    {t:"water",d:"M212,260 q30,-8 38,20 q-8,28 -38,22 q-16,-20 0,-42 Z"},
+    {t:"tree",x:100,y:150},
+    {t:"bunker",x:182,y:106,rx:14,ry:8},
+    {t:"zone",x:168,y:240},{t:"zone",x:158,y:158},
+    {t:"aim",d:"M150,395 L168,242 L156,160 L148,90",label:"DR - 6i - PW"} ]}
+}
+];
+
+/* ---------- Schematic renderer (offline fallback only) ---------- */
+const C = { rough:"#DCE8D4", fw:"#7FB86E", fwEdge:"#5E9B4F", green:"#3F8A5C", fringe:"#5FA877",
+  sand:"#E4CFA3", sandEdge:"#C9AC72", water:"#7FB3C8", waterEdge:"#5B93AB",
+  tee:"#2E6B45", aim:"#C43B2E", zone:"#C8922A", ink:"#1C2420", oob:"#8A8378" };
+const FAIRWAYS = {
+  "straight":"M120,380 C112,300 112,220 122,140 C128,110 172,110 178,140 C188,220 188,300 180,380 Z",
+  "dogleg-left":"M140,380 C138,320 150,270 168,240 C182,215 170,190 148,175 C118,152 102,120 104,85 C106,68 140,64 144,82 C150,120 168,145 192,168 C214,190 214,230 196,262 C182,290 176,330 176,380 Z",
+  "dogleg-right":"M130,380 C130,320 122,270 106,240 C94,215 106,190 128,175 C158,152 176,120 172,85 C170,68 138,64 134,82 C130,120 112,145 90,168 C70,190 72,230 92,262 C106,290 124,330 124,380 Z",
+  "curve-left":"M132,380 C120,300 116,230 128,160 C134,120 160,116 168,138 C178,200 180,290 176,380 Z",
+  "par3":"M138,380 C134,350 134,330 138,310 C142,296 158,296 162,310 C166,330 166,350 162,380 Z",
+  "par3-diag":"M138,380 C134,350 134,330 138,310 C142,296 158,296 162,310 C166,330 166,350 162,380 Z" };
+const GREENS = {
+  "straight":{cx:150,cy:78,rx:34,ry:24}, "dogleg-left":{cx:122,cy:76,rx:32,ry:22},
+  "dogleg-right":{cx:152,cy:76,rx:32,ry:22}, "curve-left":{cx:150,cy:80,rx:34,ry:24},
+  "par3":{cx:150,cy:100,rx:44,ry:30}, "par3-diag":{cx:150,cy:100,rx:46,ry:26,rot:-18} };
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+function renderSVG(h){
+  const f=h.svg; let inner="";
+  inner += `<rect x="0" y="0" width="300" height="420" fill="${C.rough}"/>`;
+  inner += `<path d="${FAIRWAYS[f.shape]}" fill="${C.fw}" stroke="${C.fwEdge}" stroke-width="2"/>`;
+  const g=GREENS[f.shape]; const rot=g.rot?` transform="rotate(${g.rot} ${g.cx} ${g.cy})"`:"";
+  inner += `<ellipse cx="${g.cx}" cy="${g.cy}" rx="${g.rx+6}" ry="${g.ry+6}" fill="${C.fringe}"${rot}/>`;
+  inner += `<ellipse cx="${g.cx}" cy="${g.cy}" rx="${g.rx}" ry="${g.ry}" fill="${C.green}"${rot}/>`;
+  inner += `<line x1="${g.cx}" y1="${g.cy}" x2="${g.cx}" y2="${g.cy-20}" stroke="#fff" stroke-width="2"/><path d="M${g.cx},${g.cy-20} l12,4 l-12,4 Z" fill="${C.aim}"/>`;
+  const order={water:1,waste:1,oob:2,ridge:2,bunker:3,tree:3,zone:4,aim:5};
+  const feats=[...(f.features||[])].sort((a,b)=>(order[a.t]||9)-(order[b.t]||9));
+  for(const ft of feats){
+    if(ft.t==="water") inner+=`<path d="${ft.d}" fill="${C.water}" stroke="${C.waterEdge}" stroke-width="1.5" opacity="0.95"/>`;
+    else if(ft.t==="waste") inner+=`<path d="${ft.d}" fill="${C.sand}" stroke="${C.sandEdge}" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+    else if(ft.t==="bunker") inner+=`<ellipse cx="${ft.x}" cy="${ft.y}" rx="${ft.rx}" ry="${ft.ry}" fill="${C.sand}" stroke="${C.sandEdge}" stroke-width="1.5"/>`;
+    else if(ft.t==="oob") inner+=`<line x1="${ft.x1}" y1="${ft.y1}" x2="${ft.x2}" y2="${ft.y2}" stroke="${C.oob}" stroke-width="3" stroke-dasharray="8 5"/><text x="${ft.x1+6}" y="${(ft.y1+ft.y2)/2}" font-size="10" font-weight="700" fill="${C.oob}" font-family="ui-monospace,monospace" transform="rotate(90 ${ft.x1+6} ${(ft.y1+ft.y2)/2})">OOB</text>`;
+    else if(ft.t==="ridge") inner+=`<path d="${ft.d}" fill="none" stroke="#B8B09A" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 5"/>`;
+    else if(ft.t==="tree") inner+=`<circle cx="${ft.x}" cy="${ft.y}" r="14" fill="#2C5638"/><circle cx="${ft.x-8}" cy="${ft.y+6}" r="9" fill="#356B44"/><circle cx="${ft.x+8}" cy="${ft.y+6}" r="9" fill="#356B44"/><text x="${ft.x}" y="${ft.y+32}" font-size="9" font-weight="700" fill="${C.ink}" text-anchor="middle" font-family="ui-monospace,monospace">GUM</text>`;
+    else if(ft.t==="zone") inner+=`<circle cx="${ft.x}" cy="${ft.y}" r="8" fill="none" stroke="${C.zone}" stroke-width="2.5"/><circle cx="${ft.x}" cy="${ft.y}" r="2.5" fill="${C.zone}"/>`;
+    else if(ft.t==="aim") inner+=`<path d="${ft.d}" fill="none" stroke="${C.aim}" stroke-width="2.5" stroke-dasharray="7 5" stroke-linecap="round" marker-end="url(#arrow)"/>`+(ft.label?`<text x="150" y="412" font-size="11" font-weight="800" fill="${C.aim}" text-anchor="middle" font-family="ui-monospace,monospace" letter-spacing="1">${esc(ft.label)}</text>`:"");
+  }
+  inner += `<rect x="141" y="386" width="18" height="7" rx="2.5" fill="${C.tee}"/><text x="150" y="382" font-size="9" font-weight="700" fill="${C.tee}" text-anchor="middle" font-family="ui-monospace,monospace">TEE</text>`;
+  inner += `<text x="12" y="20" font-size="10" font-weight="700" fill="${C.ink}" opacity="0.45" font-family="ui-monospace,monospace">HOLE ${h.n}</text>`;
+  return `<svg viewBox="0 0 300 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Schematic diagram of hole ${h.n}"><defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="${C.aim}"/></marker></defs>${inner}</svg>`;
+}
+
+/* ---------- App ---------- */
+const $ = id => document.getElementById(id);
+let storageOK = true;
+try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch(e){ storageOK = false; }
+
+const sel = $("holeSelect");
+HOLES.forEach(h => { const o=document.createElement("option"); o.value=h.n; o.textContent=`Hole ${h.n} \u00B7 Par ${h.par}`; sel.appendChild(o); });
+
+let current = 1;
+if (storageOK) { const last=parseInt(localStorage.getItem("lynwood-last-hole"),10); if(last>=1&&last<=18) current=last; }
+
+function loadNote(n){ if(!storageOK) return ""; return localStorage.getItem("lynwood-note-h"+n)||""; }
+let saveTimer=null;
+function saveNote(n,text){
+  if(!storageOK){ $("storageWarn").style.display="block"; return; }
+  localStorage.setItem("lynwood-note-h"+n,text);
+  const flag=$("savedFlag"); flag.classList.add("show");
+  clearTimeout(saveTimer); saveTimer=setTimeout(()=>flag.classList.remove("show"),1200);
+}
+
+const img = $("holeImg");
+img.addEventListener("error", () => { $("diagramWrap").classList.add("img-failed"); });
+img.addEventListener("load",  () => { $("diagramWrap").classList.remove("img-failed"); });
+
+function show(n){
+  current = n;
+  const h = HOLES[n-1];
+  sel.value = n;
+  $("holeNum").textContent = h.n;
+  $("holeMeta").innerHTML =
+    `<span class="chip">PAR ${h.par}</span>` +
+    `<span class="chip">${esc(h.dist)}</span>` +
+    `<span class="chip si">SI ${h.si}</span>` +
+    (h.si <= 3 ? `<span class="chip danger">3-SHOT HOLE</span>` : "");
+  $("holeTitle").textContent = h.title;
+
+  $("diagramWrap").classList.remove("img-failed");
+  img.src = IMG_BASE + h.img;
+  $("svgHost").innerHTML = renderSVG(h);
+
+  $("descCard").textContent = h.desc;
+  $("hazardList").innerHTML = h.hazards.map(hz =>
+    `<div class="hazard"><span class="hz-tag hz-${hz[0]}">${hz[0]}</span><p>${esc(hz[1])}</p><span class="hz-dist">${esc(hz[2])}</span></div>`).join("");
+  $("shotList").innerHTML = h.shots.map(s =>
+    `<div class="shot"><span class="club-tag">${esc(s[0])}</span><p>${s[1]}</p></div>`).join("");
+  $("dangerCard").textContent = h.danger;
+  $("targetScore").textContent = h.target;
+  $("noteHoleNum").textContent = h.n;
+  const box=$("noteBox"); box.value=loadNote(n);
+  $("noteCount").textContent = box.value.length + " characters";
+  if(!storageOK) $("storageWarn").style.display="block";
+  if(storageOK) localStorage.setItem("lynwood-last-hole", String(n));
+  window.scrollTo({top:0});
+}
+
+sel.addEventListener("change", e => show(parseInt(e.target.value,10)));
+$("prevBtn").addEventListener("click", () => show(current===1?18:current-1));
+$("nextBtn").addEventListener("click", () => show(current===18?1:current+1));
+$("noteBox").addEventListener("input", e => {
+  $("noteCount").textContent = e.target.value.length + " characters";
+  saveNote(current, e.target.value);
+});
+
+show(current);
+</script>
+</body>
+</html>
