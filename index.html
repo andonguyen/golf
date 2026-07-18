@@ -88,6 +88,26 @@
   .note-status .saved.show{opacity:1}
   .storage-warn{margin-top:8px;font-size:12px;color:var(--flag);display:none}
   .footer{text-align:center;padding:22px 0 30px;font-size:10.5px;color:var(--ink-soft);font-family:var(--mono);letter-spacing:.08em;line-height:1.8}
+  .nav-btn.gear{margin-left:2px;font-size:17px}
+  .topbar h1{font-size:9.5px;letter-spacing:.1em}
+  #holeSelect{max-width:92px}
+  select.topsel.tee{max-width:80px}
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,46,31,.55);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+  .modal-overlay[hidden]{display:none}
+  .modal{background:var(--chalk);width:100%;max-width:520px;max-height:86vh;overflow-y:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
+  .modal-head{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--pine);margin-bottom:6px}
+  .modal-close{border:none;background:#E6E1D2;color:var(--ink);width:34px;height:34px;border-radius:9px;font-size:15px;cursor:pointer}
+  .modal-note{font-size:12.5px;color:var(--ink-soft);line-height:1.4;margin-bottom:12px}
+  .club-grid-head,.club-row{display:grid;grid-template-columns:36px 1fr 74px 74px;gap:8px;align-items:center}
+  .club-grid-head{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--ink-soft);text-transform:uppercase;padding:0 2px 6px}
+  .club-row{background:var(--card);border-radius:10px;padding:8px 8px;margin-bottom:6px;box-shadow:0 1px 3px rgba(28,36,32,.06)}
+  .club-row.off{opacity:.5}
+  .club-row input[type=checkbox]{width:20px;height:20px;accent-color:var(--turf);justify-self:center}
+  .club-row .cname{font-size:13.5px;font-weight:600}
+  .club-row .cname small{display:block;font-family:var(--mono);font-size:10px;color:var(--ink-soft)}
+  .club-row input[type=number]{width:100%;border:1.5px solid #E2DCC9;border-radius:8px;padding:8px 6px;font-family:var(--mono);font-size:14px;text-align:center;background:#FCFBF7}
+  .club-row input[type=number]:focus{outline:none;border-color:var(--turf)}
+  .modal-reset{margin-top:10px;width:100%;border:1.5px solid var(--flag);background:transparent;color:var(--flag);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer}
   @media (prefers-reduced-motion: reduce){*{transition:none !important}}
 </style>
 </head>
@@ -103,8 +123,22 @@
       <select id="holeSelect" class="topsel" aria-label="Select hole"></select>
       <button class="nav-btn" id="nextBtn" aria-label="Next hole">&#8250;</button>
     </div>
+    <button class="nav-btn gear" id="settingsBtn" aria-label="Bag settings">&#9881;</button>
   </div>
 </header>
+
+<div class="modal-overlay" id="settingsModal" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <span>My bag &mdash; metres</span>
+      <button class="modal-close" id="settingsClose" aria-label="Close">&#10005;</button>
+    </div>
+    <p class="modal-note">Tick the clubs you carry and set <b>total</b> and <b>carry</b> distances. Every play strategy recalculates instantly.</p>
+    <div class="club-grid-head"><span></span><span>Club</span><span>Total</span><span>Carry</span></div>
+    <div id="clubRows"></div>
+    <button class="modal-reset" id="settingsReset">Reset to defaults</button>
+  </div>
+</div>
 
 <main id="app">
   <div class="hole-head">
@@ -188,14 +222,39 @@ const TEES = [
 const IMG_BASE = "https://cdn.moble.com/w/3034/";
 const IMGS = ["2175953/file/LYN%20Golf%20Course%20Holes.png","2175954/file/LYN%20Golf%20Course%20Holes2.png","2175955/file/LYN%20Golf%20Course%20Holes3.png","2175956/file/LYN%20Golf%20Course%20Holes4.png","2175957/file/LYN%20Golf%20Course%20Holes5.png","2175958/file/LYN%20Golf%20Course%20Holes6.png","2175959/file/LYN%20Golf%20Course%20Holes7.png","2175960/file/LYN%20Golf%20Course%20Holes8.png","2175961/file/LYN%20Golf%20Course%20Holes9.png","2175962/file/LYN%20Golf%20Course%20Holes10.png","2175963/file/LYN%20Golf%20Course%20Holes11.png","2175964/file/LYN%20Golf%20Course%20Holes12.png","2175965/file/LYN%20Golf%20Course%20Holes13.png","2175966/file/LYN%20Golf%20Course%20Holes14.png","2175967/file/LYN%20Golf%20Course%20Holes15.png","2175968/file/LYN%20Golf%20Course%20Holes16.png","2175969/file/LYN%20Golf%20Course%20Holes17.png","2175970/file/LYN%20Golf%20Course%20Holes18.png"];
 
-const BAG = [["DR",220],["4W",185],["4H",175],["4i",162],["5i",155],["6i",146],["7i",138],["8i",128],["9i",110],["PW",100]];
-const CLUB = Object.fromEntries(BAG);
-const carry = c => c==="DR" ? 200 : CLUB[c]-15;
+/* Club catalog: [id, label, default total, default carry, in-bag by default]
+   Defaults = owner's current gapping; everything editable in Settings. */
+const CATALOG = [
+  ["DR","Driver",220,200,1],
+  ["3W","3 Wood",200,185,0],["4W","4 Wood",185,170,1],["5W","5 Wood",178,163,0],["7W","7 Wood",168,153,0],
+  ["3H","3 Hybrid",185,170,0],["4H","4 Hybrid",175,160,1],["5H","5 Hybrid",165,150,0],
+  ["4i","4 Iron",162,147,1],["5i","5 Iron",155,140,1],["6i","6 Iron",146,131,1],["7i","7 Iron",138,122,1],["8i","8 Iron",128,113,1],["9i","9 Iron",110,95,1],
+  ["PW","Pitching Wedge",100,88,1],["AW","Approach Wedge",90,80,0],["GW","Gap Wedge",90,80,0],
+  ["52","52\u00B0 Wedge",85,76,0],["56","56\u00B0 Wedge",75,68,0],["60","60\u00B0 Wedge",62,56,0]
+];
+let BAG=[], CLUB={}, CARRY={}, DRD=220;
+function defaultBag(){ const o={}; for(const [id,,t,c,on] of CATALOG) o[id]={on:!!on,total:t,carry:c}; return o; }
+function bagSettings(){
+  try{ const j=JSON.parse(lsGet("lynwood-bag")||"null"); if(j&&typeof j==="object"){ const d=defaultBag(); for(const k in d) if(j[k]) d[k]=j[k]; return d; } }catch(e){}
+  return defaultBag();
+}
+function rebuildBag(){
+  const bs=bagSettings(); BAG=[]; CLUB={}; CARRY={};
+  for(const [id] of CATALOG){ const c=bs[id];
+    if(c && c.on && c.total>0){ BAG.push([id,c.total]); CLUB[id]=c.total; CARRY[id]=(c.carry>0&&c.carry<=c.total)?c.carry:Math.max(30,c.total-15); } }
+  BAG.sort((a,b)=>b[1]-a[1]);
+  if(!BAG.length){ BAG=[["PW",100]]; CLUB={PW:100}; CARRY={PW:88}; }
+  DRD = CLUB["DR"] || BAG[0][1];
+}
+const carry = c => CARRY[c] ?? (CLUB[c] ? CLUB[c]-15 : 80);
+const has = c => CLUB[c]!==undefined;
+const teePref = (name,target) => has(name) ? name : pickUnder(target);
+function maxFairway(){ for(const [n,dd] of BAG){ if(n!=="DR") return dd; } return BAG[0][1]; }
 
 /* club pickers */
 function pickNearest(t){ let best=BAG[0]; for(const [n,d] of BAG){ if(Math.abs(d-t)<Math.abs(CLUB[best[0]]-t)) best=[n,d]; } return best[0]; }
-function pickCover(t){ for(let i=BAG.length-1;i>=0;i--){ if(BAG[i][1]>=t) { /* smallest >= t */ } } let cand=null; for(const [n,d] of BAG){ if(d>=t && (cand===null||d<CLUB[cand])) cand=n; } return cand||"DR"; }
-function pickUnder(t){ let cand=null; for(const [n,d] of BAG){ if(d<=t && (cand===null||d>CLUB[cand])) cand=n; } return cand||"PW"; }
+function pickCover(t){ let cand=null; for(const [n,d] of BAG){ if(d>=t && (cand===null||d<CLUB[cand])) cand=n; } return cand||(BAG[0]?BAG[0][0]:"DR"); }
+function pickUnder(t){ let cand=null; for(const [n,d] of BAG){ if(d<=t && (cand===null||d>CLUB[cand])) cand=n; } return cand||(BAG.length?BAG[BAG.length-1][0]:"PW"); }
 const m = v => Math.round(v);
 
 /* =====================================================================
@@ -209,9 +268,9 @@ const HOLES = [
   hazards:[["SAND","Right fairway bunker (layup position marker)",[170,190]],["SAND","Cross bunkers short of the green",[60,80]],["WATER","Wetland left of the green",[15,40]],["ROUGH","Native rough both sides — ball-swallowing all day","ALL"]],
   danger:"Cross bunkers catch a greedy second. Wetland lurks left of the green.",
   plan(d){
-    const rem = d-220;
+    const rem = d-DRD;
     const secMax = rem-80;                       // stay short of cross bunkers
-    const sec = pickUnder(Math.min(secMax,185));
+    const sec = pickUnder(Math.min(secMax,maxFairway()));
     const third = rem-CLUB[sec];
     return [
       ["DR",`Anywhere on the wide fairway. Aim <strong>left edge</strong>, let the fade drift to centre. Leaves ~${m(rem)}m. Full routine — this swing sets your tempo.`],
@@ -228,7 +287,7 @@ const HOLES = [
     const rem = d-CLUB[tee];
     const app = pickNearest(rem);
     return [
-      [tee,`${tee==="DR"?"Driver fits from this tee — the run-through trouble is beyond your 220m.":"Driver stays in the bag — 220m runs through the turn."} ${tee} (${CLUB[tee]}m) to the <strong>widest part</strong>, aimed right-centre. Leaves ~${m(rem)}m.`],
+      [tee,`${tee==="DR"?`Driver fits from this tee — the run-through trouble is beyond your ${DRD}m.`:`Driver stays in the bag — ${DRD}m runs through the turn.`} ${tee} (${CLUB[tee]}m) to the <strong>widest part</strong>, aimed right-centre. Leaves ~${m(rem)}m.`],
       [app,`~${m(rem)}m to <strong>centre of the green</strong>. Never chase a left flag behind the bunker.`]];
   }
 },
@@ -260,7 +319,7 @@ const HOLES = [
   hazards:[["WASTE","Expansive sandy waste in the drive zone (right/centre)",[120,180]],["SAND","Small pot bunker front-RIGHT of green",[0,8]],["ROUGH","Native rough left as the fairway bends",[100,180]]],
   danger:"Refusing the layup is how 5 becomes 7 on SI 1.",
   plan(d){
-    const rem = d-220;
+    const rem = d-DRD;
     if (rem<=150){
       const app=pickNearest(rem);
       return [["DR",`Aim the <strong>left edge of the waste-free line</strong>; fade finishes centre. Leaves ~${m(rem)}m — from this tee the green is attackable.`],
@@ -291,12 +350,12 @@ const HOLES = [
   danger:"The hidden water left of the drive zone. And know the central bunker number from your tee before you swing.",
   plan(d){
     const trapAt = d-155;                        // bunker is ~155m from the green
-    const drReaches = 220 >= trapAt-8;
-    const rem = d-220;
+    const drReaches = DRD >= trapAt-8;
+    const rem = d-DRD;
     const app = pickNearest(rem);
     const teeText = drReaches
-      ? `From this tee the central bunker is only ~${m(trapAt)}m out — <strong>driver reaches it</strong>. Aim at the right side of the trap where the fairway opens: the line does the work, or drop to 4W (185m) to stay short of it entirely.`
-      : `From this tee the central bunker is ~${m(trapAt)}m out — your 220m finishes just short. <strong>Driver at the right side of the trap</strong>; the fade works into the open room right. Stay off the left.`;
+      ? `From this tee the central bunker is only ~${m(trapAt)}m out — <strong>driver reaches it</strong>. Aim at the right side of the trap where the fairway opens: the line does the work, or drop to the ${teePref("4W",trapAt-10)} (${CLUB[teePref("4W",trapAt-10)]}m) to stay short of it entirely.`
+      : `From this tee the central bunker is ~${m(trapAt)}m out — your ${DRD}m finishes just short. <strong>Driver at the right side of the trap</strong>; the fade works into the open room right. Stay off the left.`;
     return [["DR",teeText],
       [app,`~${m(rem)}m in. <strong>Flight it down and let it release</strong> — the green takes runners. Most wind-proof approach on the course.`]];
   }
@@ -306,11 +365,12 @@ const HOLES = [
   hazards:[["OOB","Out-of-bounds fence, entire left side","ALL"],["SAND","Three fairway bunkers, left side",[160,220]],["WATER","Pond squeezing the RIGHT of the landing zone",[150,200]],["SAND","Greenside bunker left","G"],["WATER","Water right of the green","G"]],
   danger:"Pond right = your driver slice window. This hole is why the 4H is in the bag.",
   plan(d){
-    const rem = d-175;
+    const tc = teePref("4H",176);
+    const rem = d-CLUB[tc];
     const sec = pickUnder(Math.min(rem-45,155));
     const pitch = rem-CLUB[sec];
     return [
-      ["4H",`The one tee shot where your slice is wet. 4H (175m) at <strong>centre-left</strong> — tighter dispersion keeps both flanks out of reach. Leaves ~${m(rem)}m.`],
+      [tc,`The one tee shot where your slice is wet. ${tc} (${CLUB[tc]}m) at <strong>centre-left</strong> — tighter dispersion keeps both flanks out of reach. Leaves ~${m(rem)}m.`],
       [sec,`Up the hill, short of the long narrow green — leaves a ~${m(pitch)}m pitch.`],
       ["PITCH",`On, below the hole (back-to-front slope). Greenside: bunker left, water right. <strong>Never attack.</strong> Two putts, take 5.`]];
   }
@@ -330,13 +390,14 @@ const HOLES = [
   hazards:[["SAND","Right fairway bunker",[125,135]],["SAND","Left fairway bunker",[110,120]],["SAND","Long bunker through the dogleg",[75,85]],["WATER","Water in FRONT of the green (must carry)",[25,35]],["WATER","Pond RIGHT of the green","G"],["SAND","Pot bunker front-left of green","G"]],
   danger:"Right of this green is wet. Do NOT aim right-half here.",
   plan(d){
-    const rem = d-185;
+    const tc = teePref("4W",188);
+    const rem = d-CLUB[tc];
     const app = pickCover(rem-5);
-    const alt = d-220;
+    const alt = d-DRD;
     const rows = [
-      ["4W",`<strong>Between the right and long bunkers</strong> — 185m threads the gap, leaving ~${m(rem)}m.`],
+      [tc,`<strong>Between the right and long bunkers</strong> — ${CLUB[tc]}m threads the gap, leaving ~${m(rem)}m.`],
       [app,`Carry the water in front: ${app} (~${carry(app)}m carry) covers and releases to the middle. Take one more club into wind or to a back pin — but the green is small, so only when needed. <strong>Aim CENTRE-LEFT</strong> — the only green all day where the pull is your friend.`]];
-    if (alt>0 && 220 <= d-70) rows.push(["ALT",`Driver (220) also fits short of the long bunker (~${m(d-80)}m out) and leaves ~${m(alt)}m — a ${pickNearest(alt)}, but check the carry over the water (~${Math.max(0,m(alt-25))}m) against that club's carry before choosing this line.`]);
+    if (alt>0 && 220 <= d-70) rows.push(["ALT",`Driver (${DRD}) also fits short of the long bunker (~${m(d-80)}m out) and leaves ~${m(alt)}m — a ${pickNearest(alt)}, but check the carry over the water (~${Math.max(0,m(alt-25))}m) against that club's carry before choosing this line.`]);
     return rows;
   }
 },
@@ -345,10 +406,11 @@ const HOLES = [
   hazards:[["SAND","Large right-side fairway bunker (the flirt line)",[90,115]],["WATER","Creek crossing in FRONT of the green",[15,25]],["SAND","Large bunker hiding the BACK-LEFT of the green","G"],["ROUGH","Wide-side rough left for the over-cautious",[90,130]]],
   danger:"The creek in front + hidden back-left bunker make pin-chasing expensive.",
   plan(d){
-    const rem = d-185;
+    const tc = teePref("4W",188);
+    const rem = d-CLUB[tc];
     const app = pickCover(rem-2);
     return [
-      ["4W",`<strong>Left of the fairway bunker</strong> — fade edges toward the ideal line, 185m stays short of trouble. Leaves ~${m(rem)}m.`],
+      [tc,`<strong>Left of the fairway bunker</strong> — fade edges toward the ideal line, ${CLUB[tc]}m stays short of trouble. Leaves ~${m(rem)}m.`],
       [app,`Full ${app}, nothing less — the creek in front punishes thin or under-clubbed. Middle of green; back-left is a sucker pin.`]];
   }
 },
@@ -357,12 +419,12 @@ const HOLES = [
   hazards:[["WATER","Wetlands — ENTIRE left side, tee to green","ALL"],["SAND","Bunker chain down the right",[215,295]],["WATER","Diagonal creek crossing, well short of green",[140,155]],["SAND","Three bunkers between creek and green",[55,115]],["ROUGH","Narrowing rough as the drive stretches",[180,250]]],
   danger:"The pulled second toward the wetlands is the card-wrecker. One deliberate alignment routine.",
   plan(d){
-    const rem = d-220;
+    const rem = d-DRD;
     const need = rem-140;                        // must finish beyond the creek (~145 from green)
     const sec = pickCover(need+12);
     const third = rem-CLUB[sec];
     return [
-      ["DR",`Right-centre — 220m sits in the friendly width before the fairway tightens. Leaves ~${m(rem)}m.`],
+      ["DR",`Right-centre — ${DRD}m sits in the friendly width before the fairway tightens. Leaves ~${m(rem)}m.`],
       [sec,`<strong>Carry the diagonal creek</strong> (~${m(need)}m to clear it) — the ${sec} does it with margin. ALIGNMENT CHECK: wetlands-left vs your pull-left is the worst matchup on the course.`],
       [pickNearest(third),`~${m(third)}m clean pitch. From tee-shot rough: lay up short of the creek instead and take the bunker route with a full wedge.`]];
   }
@@ -372,17 +434,17 @@ const HOLES = [
   hazards:[["SAND","Beach-style bunker on the corner (right)",[115,145]],["WATER","Wetland along the entire right of the dogleg",[100,200]],["SAND","Cross-slope bunker well short of the green",[55,70]],["ROUGH","Elevated green surrounds — small, hidden target","G"]],
   danger:"Right-side wetland + beach bunker vs your slice off the tee.",
   plan(d){
-    const rem = d-220+7;                         // elevated green adds ~half club
+    const rem = d-DRD+7;                         // elevated green adds ~half club
     if (rem<=150){
       const app=pickUnder(rem+2);   // hidden elevated green: never fly long
       return [
-        ["DR",`<strong>Firmly at the left half</strong> — the corner trouble sits exactly in your slice window. Fade finishes centre, leaving ~${m(d-220)}m (plays ~${m(rem)}m uphill).`],
+        ["DR",`<strong>Firmly at the left half</strong> — the corner trouble sits exactly in your slice window. Fade finishes centre, leaving ~${m(d-DRD)}m (plays ~${m(rem)}m uphill).`],
         [app,`From fairway: <strong>full ${app} at the right-half</strong>. The cross-slope bunker (~${m(d-62)}m out) is behind your ball flight from here.`],
         ["9i",`From rough: 9i to ~25m short, pitch on, two putts, write 5 and feel good. SI 2 still owes you nothing.`]];
     }
     const lay = pickNearest(rem-35);
     return [
-      ["DR",`<strong>Firmly at the left half</strong> — corner trouble sits in your slice window. Leaves ~${m(d-220)}m (plays ~${m(rem)}m uphill): too much for this small hidden green.`],
+      ["DR",`<strong>Firmly at the left half</strong> — corner trouble sits in your slice window. Leaves ~${m(d-DRD)}m (plays ~${m(rem)}m uphill): too much for this small hidden green.`],
       [lay,`Lay up <strong>short of the cross-slope bunker</strong> (~${m(d-62)}m out from the tee).`],
       ["WEDGE",`Pitch on, two putts, take 5. SI 2 played as a three-shotter.`]];
   }
@@ -415,13 +477,13 @@ const HOLES = [
   hazards:[["SAND","Flanking bunkers both sides of the drive zone",[240,320]],["WATER","Small pond in the SECOND-shot zone, near the green",[90,120]],["SAND","Beach-style bunker right of the pond",[100,115]],["SAND","Greenside trap left + humps and hollows","G"],["ROUGH","Elevated green — every miss leaves an ugly pitch","G"]],
   danger:"The pond in the layup zone is the card-trap. Verify its distance round one.",
   plan(d){
-    const rem = d-220;
+    const rem = d-DRD;
     const sec = pickUnder(rem-118);              // finish short of the pond (~100-120 from green)
     const third = rem-CLUB[sec]+7;               // elevated green
     const tc = pickCover(third-4);
     return [
       ["DR",`Centre-left. A wild one has room — it parallels the 12th. Leaves ~${m(rem)}m.`],
-      [sec,`Lands ~${m(220+CLUB[sec])}m from the tee, comfortably <strong>short of the pond and beach bunker</strong>. VERIFY the pond distance on your first round and correct the numbers here.`],
+      [sec,`Lands ~${m(DRD+CLUB[sec])}m from the tee, comfortably <strong>short of the pond and beach bunker</strong>. VERIFY the pond distance on your first round and correct the numbers here.`],
       [tc,`~${m(rem-CLUB[sec])}m third (plays ~${m(third)}m to the elevated centre) — the ${tc} clears the beach bunker. <strong>Centre only</strong>: left, right and long all punish.`]];
   }
 },
@@ -440,7 +502,7 @@ const HOLES = [
   hazards:[["WATER","Hazards lining BOTH sides of the fairway",[200,280]],["TREE","Large gum tree, left — blocks a drifted drive's approach",[200,230]],["SAND","Deep bunker front-RIGHT of the raised green",[3,10]],["ROUGH","Back-to-front green — above the hole is slippery","G"]],
   danger:"The gum tree off the tee and the front-right bunker at the green — both punish tentativeness, not aggression.",
   plan(d){
-    const rem = d-220;
+    const rem = d-DRD;
     const sec = pickUnder(rem-90);               // leave a full committed wedge/short iron
     const third = rem-CLUB[sec];
     const tc = pickCover(third+3);               // raised green: must fly the bunker
@@ -608,6 +670,39 @@ teeSel.addEventListener("change",e=>{ tee=e.target.value; lsSet("lynwood-tee",te
 $("prevBtn").addEventListener("click",()=>show(current===1?18:current-1));
 $("nextBtn").addEventListener("click",()=>show(current===18?1:current+1));
 
+/* ---------- Bag settings modal ---------- */
+const modal=$("settingsModal");
+function buildSettings(){
+  const bs=bagSettings();
+  $("clubRows").innerHTML = CATALOG.map(([id,label])=>{
+    const c=bs[id];
+    return `<div class="club-row${c.on?"":" off"}" data-id="${id}">
+      <input type="checkbox" data-f="on" ${c.on?"checked":""} aria-label="${label} in bag">
+      <span class="cname">${label}<small>${id}</small></span>
+      <input type="number" inputmode="numeric" data-f="total" value="${c.total}" min="30" max="330" aria-label="${label} total metres">
+      <input type="number" inputmode="numeric" data-f="carry" value="${c.carry}" min="20" max="330" aria-label="${label} carry metres">
+    </div>`;
+  }).join("");
+}
+$("settingsBtn").addEventListener("click",()=>{ buildSettings(); modal.hidden=false; });
+$("settingsClose").addEventListener("click",()=>{ modal.hidden=true; show(current); });
+modal.addEventListener("click",e=>{ if(e.target===modal){ modal.hidden=true; show(current); } });
+$("clubRows").addEventListener("change",e=>{
+  const row=e.target.closest(".club-row"); if(!row) return;
+  const id=row.dataset.id, f=e.target.dataset.f;
+  const bs=bagSettings();
+  if(f==="on"){ bs[id].on=e.target.checked; row.classList.toggle("off",!e.target.checked); }
+  else { const v=parseInt(e.target.value,10); if(!isNaN(v)&&v>=20&&v<=330) bs[id][f]=v; else { e.target.value=bs[id][f]; return; } }
+  saveBag(bs); rebuildBag();
+});
+function saveBag(bs){ lsSet("lynwood-bag", JSON.stringify(bs)); }
+$("settingsReset").addEventListener("click",()=>{
+  if(!confirm("Reset all clubs and distances to defaults?")) return;
+  if(storageOK) localStorage.removeItem("lynwood-bag");
+  rebuildBag(); buildSettings();
+});
+
+rebuildBag();
 show(current);
 </script>
 </body>
